@@ -5,3 +5,8 @@ dist/
 .env
 .DS_Store
 uploads/
+icon*.png
+app.ico
+app.bat
+app.vbs
+*.result.json

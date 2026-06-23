@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import courseRoutes from './routes/courses';
 import eventRoutes from './routes/events';
+import suggestionRoutes from './routes/suggestions';
 import prisma from './db';
 import { setupNotificationCron } from './services/notificationService';
 
@@ -28,6 +29,7 @@ app.use(express.json({ limit: '10mb' }));
 // 路由（无认证）
 app.use('/api/courses', courseRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/suggestions', suggestionRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

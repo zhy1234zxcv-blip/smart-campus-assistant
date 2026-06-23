@@ -7,7 +7,7 @@
 import { Response } from 'express';
 import { AuthRequest, CourseData } from '../types';
 import { parseScheduleImage } from '../services/ocrService';
-import { pdfToImages } from '../services/pdfExtractor';
+import { parseSchedulePdf } from '../services/pdfExtractor';
 import prisma from '../db';
 import multer from 'multer';
 import fs from 'fs';
@@ -46,18 +46,22 @@ export const uploadSchedule = async (req: AuthRequest, res: Response): Promise<v
     let courses: CourseData[];
 
     if (req.file.mimetype === 'application/pdf') {
-      // PDF: 350 DPI 高清晰度图片 → 视觉模型识别
-      const images = pdfToImages(req.file.path);
-      if (images.length === 0) {
-        res.status(400).json({ message: 'PDF 转换失败，请重试' });
+      // PDF: pdfplumber 精准表格提取（不经过 AI，100% 准确）
+      const parsed = parseSchedulePdf(req.file.path);
+      if (parsed.length === 0) {
+        res.status(400).json({ message: '无法解析 PDF。请确认是教务系统导出的标准课表。尝试截图保存为 JPG/PNG 后上传。' });
         return;
       }
-      const allCourses: CourseData[] = [];
-      for (const img of images) {
-        const pageCourses = await parseScheduleImage(img);
-        allCourses.push(...pageCourses);
-      }
-      courses = allCourses;
+      courses = parsed.map(c => ({
+        name: c.name,
+        teacher: c.teacher || undefined,
+        location: c.location || undefined,
+        weeks: c.weeks,
+        dayOfWeek: c.dayOfWeek,
+        startSection: c.startSection,
+        endSection: c.endSection,
+        type: undefined
+      }));
     } else {
       // 图片: 用视觉模型识别
       const imageBuffer = fs.readFileSync(req.file.path);

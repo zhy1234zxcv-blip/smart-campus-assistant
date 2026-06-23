@@ -6,15 +6,18 @@
  */
 import type { CalendarEvent, Course, AppEvent } from '../types';
 
-// 节次 → 时间映射
+// 宁波工程学院风华校区作息时间（2025版）
+// 来源：https://jwc.nbut.edu.cn/jgglxxxr/zxsj.htm
 const SECTION_TIMES: Record<number, { h: number; m: number }> = {
-  1: { h: 8, m: 0 },  2: { h: 8, m: 50 },
-  3: { h: 9, m: 50 }, 4: { h: 10, m: 40 },
-  5: { h: 11, m: 30 }, 6: { h: 14, m: 0 },
-  7: { h: 14, m: 50 }, 8: { h: 15, m: 50 },
-  9: { h: 16, m: 40 }, 10: { h: 18, m: 30 },
+  1: { h: 8, m: 0 },   2: { h: 8, m: 50 },
+  3: { h: 9, m: 45 },  4: { h: 10, m: 35 },
+  5: { h: 11, m: 25 }, 6: { h: 13, m: 30 },
+  7: { h: 14, m: 20 }, 8: { h: 15, m: 10 },
+  9: { h: 16, m: 0 },  10: { h: 18, m: 30 },
   11: { h: 19, m: 20 }, 12: { h: 20, m: 10 }
 };
+// 每节课时长 40 分钟（第3-4节之间有5分钟课间）
+const SECTION_DURATION = 40;
 
 // 解析周次字符串
 function parseWeeks(weeksStr: string): number[] {
@@ -31,8 +34,9 @@ function parseWeeks(weeksStr: string): number[] {
   return weeks;
 }
 
-// 获取学期开始日期（假设 2026年春季学期 2月23日开学，周一）
-const SEMESTER_START = new Date(2026, 1, 23);
+// 宁波工程学院 2025-2026 春季学期：3月2日（周一）开始上课
+// 来源：https://app.gaokaozhitongche.com/newsguide/h/lNKlQBoX
+const SEMESTER_START = new Date(2026, 2, 2);
 
 function addDays(date: Date, days: number): Date {
   const d = new Date(date);

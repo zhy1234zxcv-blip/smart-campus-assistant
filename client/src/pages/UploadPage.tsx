@@ -136,20 +136,41 @@ export default function UploadPage() {
                 </tr>
               </thead>
               <tbody>
-                {allCourses.map(c => (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                    <td className="py-2.5 font-medium text-gray-800">{c.name}</td>
-                    <td className="py-2.5 text-gray-500">{c.teacher || '-'}</td>
-                    <td className="py-2.5 text-gray-500">{c.location || '-'}</td>
-                    <td className="py-2.5 text-gray-500 text-xs">{c.weeks}</td>
-                    <td className="py-2.5 text-gray-500">周{c.dayOfWeek} {c.startSection}-{c.endSection}节</td>
-                    <td className="py-2.5">
-                      <button onClick={() => handleDelete(c.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={15} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {(() => {
+                  // 按课程名分组
+                  const grouped: Record<string, Course[]> = {};
+                  allCourses.forEach(c => {
+                    if (!grouped[c.name]) grouped[c.name] = [];
+                    grouped[c.name].push(c);
+                  });
+                  return Object.entries(grouped).map(([name, items]) => {
+                    const base = items[0];
+                    // 收集所有时间段
+                    const times = items.map(c => {
+                      const weekDay = ['日','一','二','三','四','五','六'][c.dayOfWeek];
+                      return `周${weekDay} ${c.startSection}-${c.endSection}节`;
+                    }).join(' ');
+                    // 收集所有教室（去重）
+                    const rooms = [...new Set(items.map(c => c.location || '').filter(Boolean))].join('/') || '-';
+                    const allWeeks = [...new Set(items.map(c => c.weeks || '').filter(Boolean))].join('; ') || '-';
+                    return (
+                      <tr key={base.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
+                        <td className="py-2.5 font-medium text-gray-800">{name}</td>
+                        <td className="py-2.5 text-gray-500">{base.teacher || '-'}</td>
+                        <td className="py-2.5 text-gray-500 text-xs">{rooms}</td>
+                        <td className="py-2.5 text-gray-500 text-xs">{allWeeks.length > 60 ? allWeeks.slice(0,60)+'...' : allWeeks}</td>
+                        <td className="py-2.5 text-gray-600 text-xs">{times}</td>
+                        <td className="py-2.5">
+                          {items.map(c => (
+                            <button key={c.id} onClick={() => handleDelete(c.id)} className="text-gray-300 hover:text-red-500 transition-colors block mx-auto">
+                              <Trash2 size={15} />
+                            </button>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>

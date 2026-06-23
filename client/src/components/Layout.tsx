@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Calendar, Upload, ListTodo, Home, GraduationCap } from 'lucide-react';
+import { Calendar, Upload, ListTodo, Home, GraduationCap, Settings } from 'lucide-react';
 
 const links = [
   { to: '/', icon: Home, label: '首页', end: true },
@@ -37,6 +37,12 @@ export default function Layout() {
               {label}
             </NavLink>
           ))}
+          <div className="mt-auto pt-2 border-t border-gray-100">
+            <NavLink to="/settings" className={linkClass}>
+              <Settings size={18} />
+              设置
+            </NavLink>
+          </div>
         </nav>
 
         {/* 主内容 */}

@@ -21,7 +21,7 @@ import { fetchWeather, type WeatherData, type DailyWeather, type HourlyWeather }
 
 moment.locale('zh-cn');
 const localizer = momentLocalizer(moment);
-const SEMESTER_START = new Date(2026, 1, 23);
+const SEMESTER_START = new Date(2026, 2, 2);  // 宁工 2026 春季学期：3月2日开学
 
 // 2026 春季学期节假日
 const HOLIDAYS: { start: string; end: string; name: string }[] = [
@@ -428,13 +428,13 @@ export default function CalendarPage() {
               view={view} date={date} onView={setView} onNavigate={(d) => setDate(d)}
               components={components as any}
               min={new Date(2026, 0, 1, 8, 0, 0)}
-              max={new Date(2026, 0, 1, 20, 0, 0)}
+              max={new Date(2026, 0, 1, 20, 50, 0)}  // 第十二节下课
               popup views={[Views.WEEK, Views.DAY]}
               step={60}
               timeslots={1}
               onDrillDown={(d: Date) => { setDate(d); setView(Views.DAY); }}
               formats={{
-                weekdayFormat: (date: Date) => ['日', '一', '二', '三', '四', '五', '六'][date.getDay()],
+                weekdayFormat: (date: Date, culture: any, localizer: any) => localizer.format(date, 'dd'),
                 monthHeaderFormat: 'YYYY/M',
                 dayHeaderFormat: (date: Date) => {
                   const weekDay = ['日', '一', '二', '三', '四', '五', '六'][date.getDay()];
