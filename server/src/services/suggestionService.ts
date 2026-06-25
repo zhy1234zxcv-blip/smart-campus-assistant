@@ -12,20 +12,26 @@ interface Suggestion {
 }
 
 // 内存缓存
-let cache: { data: Suggestion; date: string } | null = null;
+let cache: { data: Suggestion; date: string; key: string } | null = null;
 
 function getCacheKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 export async function getDailySuggestion(apiKey?: string, model?: string, customPrompt?: string): Promise<Suggestion> {
-  const usedKey = apiKey || process.env.DASHSCOPE_API_KEY;
+  // 必须由客户端提供 API Key，不使用服务端默认值
+  if (!apiKey) {
+    return { tips: ['请在设置中配置 AI API Key 后获取每日建议'], updatedAt: new Date().toISOString() };
+  }
+  const usedKey = apiKey;
   const usedModel = model || 'qwen-plus';
   const systemMsg = customPrompt || '你是一个友好的校园助手，输出纯JSON字符串数组。';
   const today = getCacheKey();
 
   // 命中缓存
-  if (cache && cache.date === today) {
+  // 缓存 key 含 prompt，避免换提示词后仍返回旧结果
+  const cacheKey = `${today}-${systemMsg.slice(0, 30)}`;
+  if (cache && cache.date === today && cache.key === cacheKey) {
     return cache.data;
   }
 
@@ -56,7 +62,7 @@ export async function getDailySuggestion(apiKey?: string, model?: string, custom
   // 如果没有数据，返回空
   if (todayCourses.length === 0 && events.length === 0) {
     const tips = ['今天没有课程安排，好好休息！也可以去图书馆自习 📚'];
-    cache = { data: { tips, updatedAt: new Date().toISOString() }, date: today };
+    cache = { data: { tips, updatedAt: new Date().toISOString() }, date: today, key: cacheKey };
     return cache.data;
   }
 

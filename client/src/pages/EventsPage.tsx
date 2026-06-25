@@ -13,6 +13,7 @@ export default function EventsPage() {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [duration, setDuration] = useState('60');
   const [type, setType] = useState('other');
   const [description, setDescription] = useState('');
 
@@ -26,9 +27,9 @@ export default function EventsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/events', { title, date, time: time || undefined, type, description });
+      await api.post('/events', { title, date, time: time || undefined, type, description, duration: Number(duration) });
       setShowForm(false);
-      setTitle(''); setDate(''); setTime(''); setType('other'); setDescription('');
+      setTitle(''); setDate(''); setTime(''); setDuration('60'); setType('other'); setDescription('');
       loadEvents();
     } catch (err: any) {
       alert(err.response?.data?.message || '创建失败');
@@ -80,12 +81,16 @@ export default function EventsPage() {
             <input type="time" value={time} onChange={e => setTime(e.target.value)}
               className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <select value={type} onChange={e => setType(e.target.value)}
               className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white">
               {Object.entries(EVENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <input type="text" placeholder="备注（选填）" value={description}
+            <select value={duration} onChange={e => setDuration(e.target.value)}
+              className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white">
+              <option value="30">30分钟</option><option value="60">1小时</option><option value="90">1.5小时</option><option value="120">2小时</option>
+            </select>
+            <input type="text" placeholder="备注" value={description}
               onChange={e => setDescription(e.target.value)}
               className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
           </div>

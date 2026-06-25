@@ -83,14 +83,17 @@ export function eventsToCalendarEvents(events: AppEvent[]): CalendarEvent[] {
     const start = event.time
       ? new Date(`${event.date.split('T')[0]}T${event.time}`)
       : new Date(event.date);
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    // 使用事件的持续时间（从 description 中提取，或默认60分钟）
+    const durMs = ((event as any).duration || 60) * 60 * 1000;
+    const end = new Date(start.getTime() + durMs);
     return {
       id: `event-${event.id}`,
       title: event.title,
       start,
       end,
       type: event.type,
-      description: event.description || ''
+      description: event.description || '',
+      eventId: event.id  // 保留原始事件ID用于弹窗
     };
   });
 }

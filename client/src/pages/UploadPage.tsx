@@ -1,20 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import api from '../services/api';
+import { useData } from '../context/DataContext';
 import type { Course } from '../types';
 import { Upload, Camera, Trash2, FileText } from 'lucide-react';
 
 export default function UploadPage() {
+  const { courses: allCourses, refreshCourses } = useData();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState('');
   const [message, setMessage] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    api.get('/courses').then(r => setAllCourses(r.data));
-  }, []);
 
   const handleFile = async (file: File) => {
     setError('');
@@ -35,7 +32,7 @@ export default function UploadPage() {
       const res = await api.post('/courses/upload', formData);
       setCourses(res.data.courses);
       setMessage(res.data.message);
-      api.get('/courses').then(r => setAllCourses(r.data));
+      refreshCourses();
     } catch (err: any) {
       setError(err.response?.data?.message || '识别失败，请重试');
     } finally {

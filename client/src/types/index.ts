@@ -37,4 +37,5 @@ export interface CalendarEvent {
   end: Date;
   type: string;
   description?: string;
+  eventId?: string;
 }

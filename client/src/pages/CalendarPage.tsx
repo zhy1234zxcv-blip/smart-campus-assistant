@@ -13,7 +13,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/zh-cn';
-import api from '../services/api';
+import { useData } from '../context/DataContext';
 import type { Course, AppEvent, CalendarEvent } from '../types';
 import { coursesToCalendarEvents, eventsToCalendarEvents } from '../utils/calendarUtils';
 import { BookOpen, CalendarDays, Umbrella, CloudRain, X, MapPin, User, Clock, GraduationCap } from 'lucide-react';
@@ -65,11 +65,14 @@ function MonthGrid({ date, calendarEvents, onNavigate, onDayClick }: { date: Dat
 
   // 统计
   const monthStart = moment(date).format('YYYY-MM');
-  let totalCourses = 0, schoolDays = 0, holidayDays = 0;
+  let totalCourses = 0, schoolDays = 0, holidayDays = 0, totalEvents = 0;
   const courseSet = new Set<string>();
   calendarEvents.forEach(e => {
-    if (moment(e.start).format('YYYY-MM') === monthStart && e.type === 'course') {
+    if (moment(e.start).format('YYYY-MM') !== monthStart) return;
+    if (e.type === 'course') {
       courseSet.add(e.title);
+    } else {
+      totalEvents++;
     }
   });
   totalCourses = courseSet.size;
@@ -144,9 +147,10 @@ function MonthGrid({ date, calendarEvents, onNavigate, onDayClick }: { date: Dat
             let badge = null;
             const isPastDay = moment(d.date).isBefore(moment(), 'day');
 
+            const eventCount = calendarEvents.filter(e => moment(e.start).format('YYYY-MM-DD') === moment(d.date).format('YYYY-MM-DD') && e.type !== 'course').length;
             if (isPastDay && d.isCurrentMonth) {
               bg = 'bg-gray-100'; text = 'text-gray-400';
-              if (d.courses > 0) badge = <span className="text-[10px] text-gray-400 mt-0.5">{d.courses}门课</span>;
+              if (d.courses > 0 || eventCount > 0) badge = <span className="text-[10px] text-gray-400 mt-0.5">{d.courses > 0 ? `${d.courses}课` : ''}{d.courses > 0 && eventCount > 0 ? ' ' : ''}{eventCount > 0 ? `${eventCount}待办` : ''}</span>;
             } else if (d.holiday) {
               bg = 'bg-orange-50'; text = 'text-orange-600';
               badge = <span className="text-[9px] text-orange-500 mt-0.5">{d.holiday}</span>;
@@ -155,9 +159,9 @@ function MonthGrid({ date, calendarEvents, onNavigate, onDayClick }: { date: Dat
               badge = <span className="text-[9px] text-blue-500 mt-0.5">补班</span>;
             } else if (d.isWeekend && d.isCurrentMonth) {
               bg = 'bg-gray-50'; text = 'text-gray-400';
-            } else if (d.courses > 0 && d.isCurrentMonth) {
+            } else if ((d.courses > 0 || eventCount > 0) && d.isCurrentMonth) {
               bg = 'bg-blue-50'; text = 'text-blue-700';
-              badge = <span className="text-[10px] font-bold text-blue-600 mt-0.5">{d.courses}门课</span>;
+              badge = <span className="text-[10px] font-bold text-blue-600 mt-0.5">{d.courses > 0 ? `${d.courses}课` : ''}{d.courses > 0 && eventCount > 0 ? ' ' : ''}{eventCount > 0 ? `${eventCount}待办` : ''}</span>;
             }
 
             return (
@@ -187,18 +191,23 @@ function MonthGrid({ date, calendarEvents, onNavigate, onDayClick }: { date: Dat
 }
 
 // 周/日视图事件组件（已过课程灰色背景 + 可点击弹窗）
-function WeekEvent({ event, onCourseClick, courses }: { event: CalendarEvent; onCourseClick: (c: Course) => void; courses: Course[] }) {
+function WeekEvent({ event, onCourseClick, onEventClick, courses, events }: { event: CalendarEvent; onCourseClick: (c: Course) => void; onEventClick: (e: AppEvent) => void; courses: Course[]; events: AppEvent[] }) {
   const isPast = event.end < new Date();
-  const courseId = event.id.startsWith('course-') ? event.id.split('-')[1] : null;
+  const isCourse = event.type === 'course';
+  const courseId = isCourse ? event.id.split('-')[1] : null;
   const course = courseId ? courses.find(c => c.id === courseId) : null;
+  const ev = !isCourse && event.eventId ? events.find(e => e.id === event.eventId) : null;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (course) onCourseClick(course);
+    else if (ev) onEventClick(ev);
+  };
 
   if (isPast) {
     return (
-      <div
-        onClick={(e) => { e.stopPropagation(); if (course) onCourseClick(course); }}
-        className="text-[12px] p-1.5 rounded h-full cursor-pointer hover:brightness-95 transition-all bg-gray-200 border-l-4 border-gray-300 text-gray-400"
-        title={course ? `${course.name}\n${course.teacher || ''}\n${course.location || ''}` : event.title}
-      >
+      <div onClick={handleClick}
+        className="text-[12px] p-1.5 rounded h-full cursor-pointer hover:brightness-95 transition-all bg-gray-200 border-l-4 border-gray-300 text-gray-400">
         <div className="font-semibold truncate line-through">{event.title}</div>
       </div>
     );
@@ -206,11 +215,9 @@ function WeekEvent({ event, onCourseClick, courses }: { event: CalendarEvent; on
 
   const color = EVENT_COLORS[event.type] || '#6b7280';
   return (
-    <div
-      onClick={(e) => { e.stopPropagation(); if (course) onCourseClick(course); }}
+    <div onClick={handleClick}
       className="text-[12px] p-1.5 rounded h-full cursor-pointer hover:brightness-90 transition-all"
       style={{ backgroundColor: color + '15', borderLeft: `3px solid ${color}`, color: '#1f2937' }}
-      title={course ? `${course.name}\n${course.teacher || ''}\n${course.location || ''}` : event.title}
     >
       <div className="font-semibold truncate">{event.title}</div>
       {event.description && <div className="text-[10px] text-gray-800 truncate mt-0.5">{event.description}</div>}
@@ -223,7 +230,7 @@ function CourseDayList({ date, calendarEvents, courses, onCourseClick }: { date:
   const dateStr = moment(date).format('YYYY-MM-DD');
   const now = new Date();
   const dayCourses = calendarEvents
-    .filter(e => moment(e.start).format('YYYY-MM-DD') === dateStr && e.type === 'course')
+    .filter(e => moment(e.start).format('YYYY-MM-DD') === dateStr)
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   // 去重
@@ -279,20 +286,14 @@ function CourseDayList({ date, calendarEvents, courses, onCourseClick }: { date:
 }
 
 export default function CalendarPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [events, setEvents] = useState<AppEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { courses, events, loading } = useData();
   const [view, setView] = useState(Views.MONTH);
   const [date, setDate] = useState(new Date());
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      api.get('/courses').then(r => setCourses(r.data)),
-      api.get('/events').then(r => setEvents(r.data)),
-      fetchWeather().then(setWeather).catch(() => {})
-    ]).finally(() => setLoading(false));
+    fetchWeather().then(setWeather).catch(() => {});
   }, []);
 
   const calendarEvents: CalendarEvent[] = useMemo(() => {
@@ -300,11 +301,13 @@ export default function CalendarPage() {
   }, [courses, events]);
 
   const handleCourseClick = (c: Course) => setSelectedCourse(c);
+  const handleEventClick = (e: AppEvent) => setSelectedEvent(e);
+  const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const components = useMemo(() => ({
-    week: { event: (props: any) => <WeekEvent {...props} onCourseClick={handleCourseClick} courses={courses} /> },
-    day: { event: (props: any) => <WeekEvent {...props} onCourseClick={handleCourseClick} courses={courses} /> }
-  }), [courses]);
+    week: { event: (props: any) => <WeekEvent {...props} onCourseClick={handleCourseClick} onEventClick={handleEventClick} courses={courses} events={events} /> },
+    day: { event: (props: any) => <WeekEvent {...props} onCourseClick={handleCourseClick} onEventClick={handleEventClick} courses={courses} events={events} /> }
+  }), [courses, events]);
 
   const semesterWeeks = useMemo(() => {
     const weeks: { label: string; date: Date }[] = [];
@@ -450,6 +453,36 @@ export default function CalendarPage() {
             />
           </div>
         </>
+      )}
+
+      {/* 事件详情弹窗 */}
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center animate-scale" onClick={() => setSelectedEvent(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm m-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-gray-800 text-lg">
+                  {selectedEvent.type === 'exam' ? '📝' : selectedEvent.type === 'campus_run' ? '🏃' : '📌'} {selectedEvent.title}
+                </h3>
+              </div>
+              <button onClick={() => setSelectedEvent(null)} className="text-gray-300 hover:text-gray-500"><X size={20} /></button>
+            </div>
+            <div className="space-y-2.5 text-[13px]">
+              <div className="flex items-center gap-2"><Clock size={14} className="text-gray-400" />
+                <span className="text-gray-600">{new Date(selectedEvent.date).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })} {selectedEvent.time || ''}</span>
+              </div>
+              {selectedEvent.description && (
+                <div className="flex items-center gap-2"><MapPin size={14} className="text-gray-400" /><span className="text-gray-600">{selectedEvent.description}</span></div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className={`text-[11px] px-2 py-0.5 rounded-full ${selectedEvent.type === 'exam' ? 'bg-red-100 text-red-600' : selectedEvent.type === 'campus_run' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                  {selectedEvent.type === 'exam' ? '考试' : selectedEvent.type === 'campus_run' ? '校园跑' : selectedEvent.type === 'reminder' ? '提醒' : '其他'}
+                </span>
+                {selectedEvent.isCompleted && <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-100 text-green-600">已完成</span>}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 课程详情弹窗 */}
