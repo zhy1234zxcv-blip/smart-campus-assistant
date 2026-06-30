@@ -127,7 +127,7 @@ export default function DashboardPage() {
       {/* 课程弹窗 */}
       {selectedCourse && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center animate-scale" onClick={() => setSelectedCourse(null)}>
-          <div className="glass-card p-6 w-full max-w-sm m-4" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255,255,255,0.95)' }}>
+          <div className="modal-popup rounded-2xl shadow-xl p-6 w-full max-w-sm m-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h3 className="font-bold text-slate-800 text-lg">{selectedCourse.name}</h3>

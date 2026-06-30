@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import api from '../services/api';
 import { useData } from '../context/DataContext';
 import type { Course } from '../types';
-import { Upload, Camera, Trash2, FileText } from 'lucide-react';
+import { Upload, Camera, Trash2, FileText, Plus, X } from 'lucide-react';
 
 export default function UploadPage() {
   const { courses: allCourses, refreshCourses } = useData();
@@ -12,164 +12,86 @@ export default function UploadPage() {
   const [preview, setPreview] = useState('');
   const [message, setMessage] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showManual, setShowManual] = useState(false);
+  const [mName, setMName] = useState('');
+  const [mTeacher, setMTeacher] = useState('');
+  const [mLocation, setMLocation] = useState('');
+  const [mDay, setMDay] = useState('1');
+  const [mStart, setMStart] = useState('1');
+  const [mEnd, setMEnd] = useState('2');
+  const [mWeeks, setMWeeks] = useState('1-16周');
 
   const handleFile = async (file: File) => {
-    setError('');
-    setMessage('');
-    setLoading(true);
-    setPreview('');
-
+    setError(''); setMessage(''); setLoading(true); setPreview('');
     if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      const r = new FileReader();
+      r.onloadend = () => setPreview(r.result as string);
+      r.readAsDataURL(file);
     }
+    const fd = new FormData(); fd.append('image', file);
+    try { const res = await api.post('/courses/upload', fd); setCourses(res.data.courses); setMessage(res.data.message); refreshCourses(); }
+    catch (err: any) { setError(err.response?.data?.message || '识别失败'); }
+    finally { setLoading(false); }
+  };
 
-    const formData = new FormData();
-    formData.append('image', file);
+  const handleDelete = async (id: string) => { await api.delete(`/courses/${id}`); setCourses(cs => cs.filter(c => c.id !== id)); refreshCourses(); };
+  const clearAll = async () => { await Promise.all(allCourses.map(c => api.delete(`/courses/${c.id}`))); setCourses([]); setMessage(''); refreshCourses(); };
 
+  const handleManualAdd = async () => {
+    if (!mName.trim()) return;
     try {
-      const res = await api.post('/courses/upload', formData);
-      setCourses(res.data.courses);
-      setMessage(res.data.message);
-      refreshCourses();
-    } catch (err: any) {
-      setError(err.response?.data?.message || '识别失败，请重试');
-    } finally {
-      setLoading(false);
-    }
+      await api.post('/courses', { name: mName.trim(), teacher: mTeacher.trim() || undefined, location: mLocation.trim() || undefined, weeks: mWeeks.trim(), dayOfWeek: Number(mDay), startSection: Number(mStart), endSection: Number(mEnd) });
+      refreshCourses(); setMName(''); setMTeacher(''); setMLocation(''); setMWeeks('1-16周'); setShowManual(false); setMessage('已添加'); setTimeout(() => setMessage(''), 2000);
+    } catch (err: any) { setError(err.response?.data?.message || '添加失败'); }
   };
 
-  const handleDelete = async (id: string) => {
-    await api.delete(`/courses/${id}`);
-    setCourses(courses.filter(c => c.id !== id));
-    setAllCourses(allCourses.filter(c => c.id !== id));
-  };
-
-  const clearAll = async () => {
-    await Promise.all(allCourses.map(c => api.delete(`/courses/${c.id}`)));
-    setAllCourses([]);
-    setCourses([]);
-    setMessage('');
-  };
+  const grouped: Record<string, Course[]> = {};
+  allCourses.forEach(c => { if (!grouped[c.name]) grouped[c.name] = []; grouped[c.name].push(c); });
 
   return (
     <div className="animate-in max-w-3xl">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">上传课表</h2>
-          <p className="text-sm text-gray-400 mt-1">支持图片和 PDF，AI 自动识别</p>
+        <div><h2 className="text-2xl font-bold text-gray-800">上传课表</h2><p className="text-sm text-gray-400 mt-1">支持图片和 PDF，AI 自动识别</p></div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowManual(!showManual)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100"><Plus size={14} /> 手动添加</button>
+          {allCourses.length > 0 && <button onClick={clearAll} className="text-xs text-red-400 hover:text-red-600 px-3 py-1.5">清除全部</button>}
         </div>
-        {allCourses.length > 0 && (
-          <button onClick={clearAll} className="text-sm text-red-400 hover:text-red-600 transition-colors">
-            清除全部
-          </button>
-        )}
       </div>
 
-      {/* 上传区域 */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-        <div
-          className="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200"
-          onClick={() => fileRef.current?.click()}
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-          }}
-        >
-          {preview ? (
-            <img src={preview} alt="预览" className="max-h-56 mx-auto rounded-xl shadow-md" />
-          ) : (
-            <div className="text-gray-400">
-              <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <Camera className="text-blue-400" size={28} />
-              </div>
-              <p className="text-base font-medium text-gray-500">点击或拖拽课表到这里</p>
-              <p className="text-sm mt-1">JPG · PNG · WebP · PDF</p>
-            </div>
-          )}
-          <input
-            ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
-        </div>
-
-        {loading && (
-          <div className="text-center py-6">
-            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-500 mx-auto" />
-            <p className="text-sm text-gray-500 mt-3">AI 正在识别课表，请稍候...</p>
+      {showManual && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-3"><h3 className="font-semibold text-gray-700 text-sm">手动添加课程</h3><button onClick={() => setShowManual(false)} className="text-gray-300 hover:text-gray-500"><X size={16} /></button></div>
+          <div className="grid grid-cols-4 gap-2 mb-2">
+            <input type="text" placeholder="课程名" value={mName} onChange={e => setMName(e.target.value)} className="col-span-4 px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <input type="text" placeholder="教师" value={mTeacher} onChange={e => setMTeacher(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <input type="text" placeholder="教室" value={mLocation} onChange={e => setMLocation(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <select value={mDay} onChange={e => setMDay(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none bg-white">{['周一','周二','周三','周四','周五','周六','周日'].map((d,i) => <option key={i} value={i+1}>{d}</option>)}</select>
+            <input type="text" placeholder="周次" value={mWeeks} onChange={e => setMWeeks(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500/20" />
           </div>
-        )}
-        {error && (
-          <div className="mt-4 bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-sm">{error}</div>
-        )}
-        {message && (
-          <div className="mt-4 bg-green-50 border border-green-100 text-green-600 p-3 rounded-xl text-sm">{message}</div>
-        )}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">节次:</span><input type="number" min="1" max="12" value={mStart} onChange={e => setMStart(e.target.value)} className="w-14 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-center outline-none" />
+            <span className="text-xs text-gray-400">-</span><input type="number" min="1" max="12" value={mEnd} onChange={e => setMEnd(e.target.value)} className="w-14 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-center outline-none" /><span className="text-xs text-gray-400">节</span>
+            <button onClick={handleManualAdd} className="ml-auto px-4 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">添加</button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+        <div className="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all" onClick={() => fileRef.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}>
+          {preview ? <img src={preview} alt="预览" className="max-h-56 mx-auto rounded-xl shadow-md" /> : <div className="text-gray-400"><div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3"><Camera className="text-blue-400" size={28} /></div><p className="text-base font-medium text-gray-500">点击或拖拽课表到这里</p><p className="text-sm mt-1">JPG · PNG · WebP · PDF</p></div>}
+          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+        </div>
+        {loading && <div className="text-center py-4"><div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-500 mx-auto" /><p className="text-sm text-gray-500 mt-2">AI 正在识别...</p></div>}
+        {error && <div className="mt-3 bg-red-50 text-red-600 p-3 rounded-xl text-xs">{error}</div>}
+        {message && <div className="mt-3 bg-green-50 text-green-600 p-3 rounded-xl text-xs">{message}</div>}
       </div>
 
-      {/* 课程列表 */}
       {allCourses.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText size={18} className="text-blue-500" />
-            <h3 className="font-semibold text-gray-700">全部课程 ({allCourses.length})</h3>
-          </div>
+          <div className="flex items-center gap-2 mb-3"><FileText size={16} className="text-blue-500" /><h3 className="font-semibold text-gray-700 text-sm">全部课程 ({Object.keys(grouped).length})</h3></div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs text-gray-400 uppercase tracking-wider">
-                  <th className="pb-2 font-medium">课程</th>
-                  <th className="pb-2 font-medium">教师</th>
-                  <th className="pb-2 font-medium">教室</th>
-                  <th className="pb-2 font-medium">周次</th>
-                  <th className="pb-2 font-medium">时间</th>
-                  <th className="pb-2 font-medium w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  // 按课程名分组
-                  const grouped: Record<string, Course[]> = {};
-                  allCourses.forEach(c => {
-                    if (!grouped[c.name]) grouped[c.name] = [];
-                    grouped[c.name].push(c);
-                  });
-                  return Object.entries(grouped).map(([name, items]) => {
-                    const base = items[0];
-                    // 收集所有时间段
-                    const times = items.map(c => {
-                      const weekDay = ['日','一','二','三','四','五','六'][c.dayOfWeek];
-                      return `周${weekDay} ${c.startSection}-${c.endSection}节`;
-                    }).join(' ');
-                    // 收集所有教室（去重）
-                    const rooms = [...new Set(items.map(c => c.location || '').filter(Boolean))].join('/') || '-';
-                    const allWeeks = [...new Set(items.map(c => c.weeks || '').filter(Boolean))].join('; ') || '-';
-                    return (
-                      <tr key={base.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
-                        <td className="py-2.5 font-medium text-gray-800">{name}</td>
-                        <td className="py-2.5 text-gray-500">{base.teacher || '-'}</td>
-                        <td className="py-2.5 text-gray-500 text-xs">{rooms}</td>
-                        <td className="py-2.5 text-gray-500 text-xs">{allWeeks.length > 60 ? allWeeks.slice(0,60)+'...' : allWeeks}</td>
-                        <td className="py-2.5 text-gray-600 text-xs">{times}</td>
-                        <td className="py-2.5">
-                          {items.map(c => (
-                            <button key={c.id} onClick={() => handleDelete(c.id)} className="text-gray-300 hover:text-red-500 transition-colors block mx-auto">
-                              <Trash2 size={15} />
-                            </button>
-                          ))}
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
-              </tbody>
-            </table>
+            <table className="w-full text-xs"><thead><tr className="border-b text-left text-gray-400 uppercase tracking-wider"><th className="pb-2 font-medium">课程</th><th className="pb-2 font-medium">教师</th><th className="pb-2 font-medium">教室</th><th className="pb-2 font-medium">周次</th><th className="pb-2 font-medium">时间</th><th className="pb-2 font-medium w-8"></th></tr></thead>
+              <tbody>{Object.entries(grouped).map(([name, items]) => { const base = items[0]; const times = items.map(c => `周${'日一二三四五六'[c.dayOfWeek]} ${c.startSection}-${c.endSection}节`).join(' '); const rooms = [...new Set(items.map(c => c.location || '').filter(Boolean))].join('/') || '-'; return (<tr key={base.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors"><td className="py-2 font-medium text-gray-800">{name}</td><td className="py-2 text-gray-500">{base.teacher || '-'}</td><td className="py-2 text-gray-500">{rooms}</td><td className="py-2 text-gray-500">{items[0].weeks || '-'}</td><td className="py-2 text-gray-600">{times}</td><td className="py-2">{items.map(c => <button key={c.id} onClick={() => handleDelete(c.id)} className="text-gray-300 hover:text-red-500 block mx-auto"><Trash2 size={13} /></button>)}</td></tr>); })}</tbody></table>
           </div>
         </div>
       )}

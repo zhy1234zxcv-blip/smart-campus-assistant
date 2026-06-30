@@ -123,6 +123,12 @@ body.custom-bg .sidebar-blur { border-right: 1px solid rgba(255,255,255,0.12); }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99,102,241,0.35); }
 .btn-primary:active { transform: translateY(0); }
 
+/* 弹窗始终不透明 */
+.modal-popup { background: #fff !important; }
+
+/* 自定义背景时排除弹窗 */
+body.custom-bg .modal-popup { background: #fff !important; backdrop-filter: none !important; }
+
 /* 全局玻璃态：覆盖所有 bg-white 元素 */
 body.custom-bg [class*="bg-white"]:not(.btn-primary):not(button):not(.rbc-toolbar button):not(.rbc-active),
 body.custom-bg select[class*="bg-white"],

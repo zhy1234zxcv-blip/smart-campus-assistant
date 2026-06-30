@@ -5,8 +5,6 @@ dist/
 .env
 .DS_Store
 uploads/
-icon*.png
-app.ico
-app.bat
-app.vbs
 *.result.json
+# Exclude large icon variants, keep main ones
+icon_*.png

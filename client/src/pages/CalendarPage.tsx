@@ -458,7 +458,7 @@ export default function CalendarPage() {
       {/* 事件详情弹窗 */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center animate-scale" onClick={() => setSelectedEvent(null)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm m-4" onClick={e => e.stopPropagation()}>
+          <div className="modal-popup rounded-2xl shadow-xl p-6 w-full max-w-sm m-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-gray-800 text-lg">
@@ -488,7 +488,7 @@ export default function CalendarPage() {
       {/* 课程详情弹窗 */}
       {selectedCourse && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setSelectedCourse(null)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm m-4 animate-in" onClick={e => e.stopPropagation()}>
+          <div className="modal-popup rounded-2xl shadow-xl p-6 w-full max-w-sm m-4 animate-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
